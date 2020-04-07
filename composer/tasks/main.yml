@@ -1,0 +1,11 @@
+---
+# tasks file for composer
+- name: Downloading script
+  get_url:
+    url: https://getcomposer.org/installer
+    dest: /tmp/composer-setup.php
+    mode: 0440
+
+- name: Installing composer
+  shell: php /tmp/composer-setup.php --quiet --install-dir=/usr/local/bin --filename=composer
+
