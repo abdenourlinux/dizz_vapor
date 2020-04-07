@@ -1,0 +1,116 @@
+---
+# tasks file for vapor
+
+- name: installing requirements
+  yum:
+    name: ['npm','php73-php-zip','pexpect']
+    state: present
+
+- name: Instaling the Vapor CLI globaly
+  composer:
+    command: require
+    global_command: yes
+    arguments: laravel/vapor-cli
+  when: global == true
+
+- name: Instaling the Vapor CLI for a specific project
+  composer:
+    command: require
+    arguments: laravel/vapor-cli
+  args:
+    chdir:"{{ app_dir }}"
+  when: global == false
+
+- name: Adding  login mail
+  lineinfile:
+    path: /root/.composer/vendor/laravel/vapor-cli/src/Commands/LoginCommand.php
+    regexp: Email Address
+    line: $email = "{{ vapor_mail }}",
+
+- name: Adding login pass
+  lineinfile:
+    path: /root/.composer/vendor/laravel/vapor-cli/src/Commands/LoginCommand.php
+    regexp: Password
+    line: $password =  "{{ vapor_pass }}"
+
+- name: Loging into Vapor
+  command:  php /root/.composer/vendor/bin/vapor login
+
+
+- name: Reverting the changes in login page mail
+  lineinfile:
+    path: /root/.composer/vendor/laravel/vapor-cli/src/Commands/LoginCommand.php
+    regexp: email =
+    line: $email = Helpers::ask('Email Address'),
+
+- name: Reverting the changes in login page pass
+  lineinfile:
+    path: /root/.composer/vendor/laravel/vapor-cli/src/Commands/LoginCommand.php
+    regexp: password =
+    line: $password = Helpers::secret('Password')
+
+- name: Setting Project name
+  lineinfile:
+    path: /root/.composer/vendor/laravel/vapor-cli/src/Commands/InitCommand.php
+    regexp: \>determineName
+    line: '"{{ project_name }}",'
+
+- name: Setting the Region
+  lineinfile:
+    path: /root/.composer/vendor/laravel/vapor-cli/src/Commands/InitCommand.php
+    regexp: \>determineRegion
+    line: '"{{ region_name }}"'
+
+- name: Enabling vapor core installation
+  lineinfile:
+    path: /root/.composer/vendor/laravel/vapor-cli/src/Commands/InitCommand.php
+    regexp: ' return Str'
+    line: 'return "{{ project_name }}";'
+
+- name: Removing the Project name function
+  lineinfile:
+    path: /root/.composer/vendor/laravel/vapor-cli/src/Commands/InitCommand.php
+    regexp: 'What is the name of this project'
+    line: ''
+
+- name: Removing the Project name function Ending
+  lineinfile:
+    path: /root/.composer/vendor/laravel/vapor-cli/src/Commands/InitCommand.php
+    regexp: '  \)\);'
+    line: ''
+
+
+- name: Initiating the project
+  command:  php /root/.composer/vendor/bin/vapor init
+  args:
+    chdir: "{{ app_dir }}/@core"
+
+- name: Reverting the changes
+  template:
+    src: Init.j2
+    dest: /root/.composer/vendor/laravel/vapor-cli/src/Commands/InitCommand.php
+
+- name: Creating build command in vapor config
+  replace:
+    path: "{{ app_dir }}/@core/vapor.yml"
+    regexp: npm ci
+    replace: npm i
+
+
+- name: fixing composer path in vapor config
+  replace:
+    path: "{{ app_dir }}/@core/vapor.yml"
+    regexp: composer
+    replace: "{{ composer_path }}"
+
+- name: deploying the app
+  command:  php /root/.composer/vendor/bin/vapor deploy
+  args:
+    chdir: "{{ app_dir }}/@core"
+  when: mode == false
+
+- name: deploying the app in {{ mode_name }}
+  command:  php /root/.composer/vendor/bin/vapor deploy {{ mode_name }}
+  args:
+    chdir: "{{ app_dir }}/@core"
+  when: mode == true
