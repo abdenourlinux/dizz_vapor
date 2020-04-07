@@ -1,0 +1,11 @@
+---
+# vars file for vapor
+app_dir: /var/www/dizz
+global: true
+vapor_mail: lpsw07@aol.com
+vapor_pass: vaportest
+project_name: rjctxyz
+region_name: eu-west-1
+mode: false
+mode_name: production
+composer_path: /usr/local/bin/composer
